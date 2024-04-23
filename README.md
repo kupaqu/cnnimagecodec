@@ -45,11 +45,10 @@ EntropyCompile.bat
 - Результаты должны быть продемонстрированы на изображениях из папки ./test/
 - При обучении должны использоваться только изображения из папки ./train/
 
-На почту eabelyaev@itmo.ru прислать:
--  Отчет в виде презентации в pdf формате, который включает в себя:
--  ФИО студента, номер группы.
+На почту eabelyaev@itmo.ru прислать отчет в виде презентации в pdf формате, который включает в себя:
+- ФИО студента, номер группы.
 - Описание предложенной модификации и результаты.
 - Ссылку на репозиторий с исходным кодом кодека и инструкцию по запуску.
 
-[1] Ian H. Witten, Radford M. Neal, and John G. Cleary, “Arithmetic coding for data compression,” Commun. ACM, vol. 30, no. 6, pp. 520–540, jun
-1987.
+## Литература
+[1] Ian H. Witten, Radford M. Neal, and John G. Cleary, “Arithmetic coding for data compression,” Commun. ACM, 1987.
