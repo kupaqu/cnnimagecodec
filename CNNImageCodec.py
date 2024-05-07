@@ -25,16 +25,16 @@ trainfolder = './train/'
 w=128
 h=128
 #If 0, then the training will be started, otherwise the model will be readed from a file
-LoadModel = 1
+LoadModel = 0
 #Training parameters
-batch_size = 10
+batch_size = 4
 #Number of bits for representation of the layers sample in the training process
 bt = 3
 epochs = 3000
 #epochs = 100
 #Model parameters
-n1=128
-n2=32
+n1=256
+n2=64
 n3=16
 
 #Number of images to be compressed and shown from the test folder
@@ -95,15 +95,15 @@ def LoadImagesFromFolder (foldername):
     return x
 
 #Model training function
-def ImageCodecModel(trainfolder):
+def ImageCodecModel(trainfolder, testfolder):
     input = layers.Input(shape=(w, h, 3))
     # Encoder
-    e1 = layers.Conv2D(n1, (7, 7), activation="relu", padding="same")(input)
-    e1 = layers.MaxPooling2D((2, 2), padding="same")(e1)
-    e2 = layers.Conv2D(n2, (5, 5), activation="relu", padding="same")(e1)
-    e2 = layers.MaxPooling2D((2, 2), padding="same")(e2)
-    e3 = layers.Conv2D(n3, (3, 3), activation="relu", padding="same")(e2)
-    e3 = layers.MaxPooling2D((2, 2), padding="same")(e3)
+    e1 = layers.Conv2D(n1, (7, 7), activation="relu", padding="same", strides=2)(input)
+    # e1 = layers.MaxPooling2D((2, 2), padding="same")(e1)
+    e2 = layers.Conv2D(n2, (5, 5), activation="relu", padding="same", strides=2)(e1)
+    # e2 = layers.MaxPooling2D((2, 2), padding="same")(e2)
+    e3 = layers.Conv2D(n3, (3, 3), activation="relu", padding="same", strides=2)(e2)
+    # e3 = layers.MaxPooling2D((2, 2), padding="same")(e3)
     #add noise during training (needed for layer quantinzation)
     e3 = e3 + tensorflow.random.uniform(tensorflow.shape(e3), 0, tensorflow.math.reduce_max(e3)/pow(2, bt+1))
 
@@ -117,18 +117,27 @@ def ImageCodecModel(trainfolder):
     encoder = Model(input, e3)
     decoder = Model(e3, x)
     autoencoder = Model(input, x)
-    autoencoder.compile(optimizer="adam", loss='mean_squared_error')
+    autoencoder.compile(optimizer="adam", loss='mean_squared_error', metrics=[PSNR])
     autoencoder.summary()
 
     if LoadModel == 0:
         xtrain = LoadImagesFromFolder(trainfolder)
         xtrain = xtrain / 255
-        autoencoder.fit(xtrain, xtrain, epochs=epochs, batch_size=batch_size,shuffle=True)
-        autoencoder.save('autoencodertemp.mdl')
+
+        xtest = LoadImagesFromFolder(testfolder)
+        xtest = xtest / 255
+
+        my_callbacks = [
+            keras.callbacks.EarlyStopping(patience=10, monitor='val_PSNR', mode='max'),
+            keras.callbacks.ModelCheckpoint(filepath='autoencodertemp.mdl'),
+            # keras.callbacks.TensorBoard(log_dir='./logs'),
+        ]
+        autoencoder.fit(xtrain, xtrain, validation_data=(xtest, xtest), epochs=epochs, batch_size=batch_size,shuffle=True, callbacks=my_callbacks)
+        # autoencoder.save('autoencodertemp.mdl')
         encoder.save('encoder.mdl')
         decoder.save('decoder.mdl')
     else:
-        autoencoder = keras.models.load_model('autoencodertemp.mdl')
+        # autoencoder = keras.models.load_model('autoencodertemp.mdl')
         encoder = keras.models.load_model('encoder.mdl')
         decoder = keras.models.load_model('decoder.mdl')
     return encoder,decoder
@@ -193,7 +202,7 @@ if __name__ == '__main__':
     xtest = xtest / 255
 
     #Train the model
-    encoder, decoder = ImageCodecModel(trainfolder)
+    encoder, decoder = ImageCodecModel(trainfolder, testfolder)
 
     #Run the model for first NumImagesToShow images from the test set
     encoded_layers = encoder.predict(xtest, batch_size=NumImagesToShow)
